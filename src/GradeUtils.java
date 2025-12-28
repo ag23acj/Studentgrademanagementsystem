@@ -7,11 +7,11 @@ public class GradeUtils {
     }
 
     public static String calculateGrade(double avg) {
-        if (avg >= 90) return "A+";
-        else if (avg >= 80) return "A";
-        else if (avg >= 70) return "B";
-        else if (avg >= 60) return "C";
-        else if (avg >= 50) return "D";
-        else return "F";
+        if (avg >= 70) return "First (1st)";
+        else if (avg >= 60) return "Upper Second (2:1)";
+        else if (avg >= 50) return "Lower Second (2:2)";
+        else if (avg >= 40) return "Third (3rd)";
+        else return "Fail";
     }
+
 }
