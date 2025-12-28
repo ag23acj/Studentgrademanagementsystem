@@ -47,8 +47,8 @@ public class Main {
     }
 
     private static void addStudent(List<Student> students, Scanner scanner) {
-        System.out.print("Enter Roll No: ");
-        String roll = scanner.nextLine().trim();
+        System.out.print("Enter Student Id: ");
+        String studentId = scanner.nextLine().trim();
 
         System.out.print("Enter Name: ");
         String name = scanner.nextLine().trim();
@@ -57,7 +57,7 @@ public class Main {
         double s2 = readMark(scanner, "Subject 2");
         double s3 = readMark(scanner, "Subject 3");
 
-        Student s = new Student(roll, name, s1, s2, s3);
+        Student s = new Student(studentId, name, s1, s2, s3);
         students.add(s);
 
         System.out.println("✅ Student added successfully!");
@@ -88,7 +88,7 @@ public class Main {
         }
 
         System.out.printf("%-8s %-15s %7s %7s %7s %8s %s%n",
-                "RollNo", "Name", "Sub1", "Sub2", "Sub3", "Average", "G");
+                "ID", "Name", "Sub1", "Sub2", "Sub3", "Average", "G");
         System.out.println("------------------------------------------------------------------");
 
         for (Student s : students) {

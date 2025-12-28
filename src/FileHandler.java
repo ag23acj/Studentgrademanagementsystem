@@ -10,7 +10,7 @@ public class FileHandler {
     public static void saveStudents(List<Student> students) {
         try (PrintWriter writer = new PrintWriter(new FileWriter(FILE_NAME))) {
             for (Student s : students) {
-                writer.println(s.getRollNo() + "," +
+                writer.println(s.getstudentId() + "," +
                         s.getName() + "," +
                         s.getSub1() + "," +
                         s.getSub2() + "," +
@@ -38,13 +38,13 @@ public class FileHandler {
                 String[] parts = line.split(",");
 
                 if (parts.length == 5) {
-                    String roll = parts[0];
+                    String studentId = parts[0];
                     String name = parts[1];
                     double s1 = Double.parseDouble(parts[2]);
                     double s2 = Double.parseDouble(parts[3]);
                     double s3 = Double.parseDouble(parts[4]);
 
-                    students.add(new Student(roll, name, s1, s2, s3));
+                    students.add(new Student(studentId, name, s1, s2, s3));
                 }
             }
 
