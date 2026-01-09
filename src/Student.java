@@ -1,11 +1,12 @@
 public class Student {
+
     private String studentId;
     private String name;
     private double sub1;
     private double sub2;
     private double sub3;
     private double average;
-    private String grade;
+    private String grade; // degree classification
 
     public Student(String studentId, String name, double sub1, double sub2, double sub3) {
         this.studentId = studentId;
@@ -18,7 +19,7 @@ public class Student {
         this.grade = GradeUtils.calculateGrade(this.average);
     }
 
-    public String getstudentId() { return studentId; }
+    public String getStudentId() { return studentId; }
     public String getName() { return name; }
     public double getSub1() { return sub1; }
     public double getSub2() { return sub2; }
@@ -27,7 +28,7 @@ public class Student {
     public String getGrade() { return grade; }
 
     public void display() {
-        System.out.printf("%-8s %-15s %7.2f %7.2f %7.2f %8.2f %-3s%n",
+        System.out.printf("%-10s %-15s %7.2f %7.2f %7.2f %8.2f %-18s%n",
                 studentId, name, sub1, sub2, sub3, average, grade);
     }
 }

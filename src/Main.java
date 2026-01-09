@@ -1,4 +1,3 @@
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
 
@@ -15,8 +14,10 @@ public class Main {
             System.out.println("\nMenu:");
             System.out.println("1. Add Student");
             System.out.println("2. View All Students");
-            System.out.println("3. Exit");
-            System.out.print("Choose an option (1-3): ");
+            System.out.println("3. Search Student");
+            System.out.println("4. Delete Student");
+            System.out.println("5. Exit");
+            System.out.print("Choose an option (1-5): ");
 
             int choice;
             try {
@@ -28,26 +29,27 @@ public class Main {
 
             if (choice == 1) {
                 addStudent(students, scanner);
-            }
-            else if (choice == 2) {
+            } else if (choice == 2) {
                 viewStudents(students);
-            }
-            else if (choice == 3) {
+            } else if (choice == 3) {
+                searchStudent(students, scanner);
+            } else if (choice == 4) {
+                deleteStudent(students, scanner);
+            } else if (choice == 5) {
                 FileHandler.saveStudents(students);
                 System.out.println("Exiting... Goodbye!");
                 break;
+            } else {
+                System.out.println("Invalid choice. Please select 1 to 5.");
             }
-            else {
-                System.out.println("Invalid choice. Please select 1, 2, or 3.");
-            }
-
         }
 
         scanner.close();
     }
 
     private static void addStudent(List<Student> students, Scanner scanner) {
-        System.out.print("Enter Student Id: ");
+
+        System.out.print("Enter Student ID: ");
         String studentId = scanner.nextLine().trim();
 
         System.out.print("Enter Name: ");
@@ -87,12 +89,58 @@ public class Main {
             return;
         }
 
-        System.out.printf("%-8s %-15s %7s %7s %7s %8s %s%n",
-                "ID", "Name", "Sub1", "Sub2", "Sub3", "Average", "G");
-        System.out.println("------------------------------------------------------------------");
+        System.out.printf("%-10s %-15s %7s %7s %7s %8s %-18s%n",
+                "ID", "Name", "Sub1", "Sub2", "Sub3", "Average", "Class");
+        System.out.println("----------------------------------------------------------------------------");
 
         for (Student s : students) {
             s.display();
         }
+    }
+
+    private static void searchStudent(List<Student> students, Scanner scanner) {
+
+        if (students.isEmpty()) {
+            System.out.println("No students available to search.");
+            return;
+        }
+
+        System.out.print("Enter Student ID to search: ");
+        String id = scanner.nextLine().trim();
+
+        for (Student s : students) {
+            if (s.getStudentId().equalsIgnoreCase(id)) {
+
+                System.out.printf("%-10s %-15s %7s %7s %7s %8s %-18s%n",
+                        "ID", "Name", "Sub1", "Sub2", "Sub3", "Average", "Class");
+                System.out.println("----------------------------------------------------------------------------");
+
+                s.display();
+                return;
+            }
+        }
+
+        System.out.println("❌ Student with ID " + id + " not found.");
+    }
+
+    private static void deleteStudent(List<Student> students, Scanner scanner) {
+
+        if (students.isEmpty()) {
+            System.out.println("No students available to delete.");
+            return;
+        }
+
+        System.out.print("Enter Student ID to delete: ");
+        String id = scanner.nextLine().trim();
+
+        for (int i = 0; i < students.size(); i++) {
+            if (students.get(i).getStudentId().equalsIgnoreCase(id)) {
+                students.remove(i);
+                System.out.println("✅ Student deleted successfully.");
+                return;
+            }
+        }
+
+        System.out.println("❌ Student with ID " + id + " not found.");
     }
 }
