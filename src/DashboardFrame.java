@@ -12,21 +12,35 @@ public class DashboardFrame extends JFrame {
     private JTable table;
 
     public DashboardFrame() {
-        students = FileHandler.loadStudents();
+        students = new java.util.ArrayList<>();
+
 
         setTitle("Student Grade Management System");
         setSize(950, 550);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
 
-        // Title
-        JLabel title = new JLabel("Student Grade Management System (Dashboard)", SwingConstants.CENTER);
-        title.setFont(new Font("Arial", Font.BOLD, 20));
-        add(title, BorderLayout.NORTH);
+        JPanel header = new JPanel(new BorderLayout());
+        header.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+
+        JLabel title = new JLabel("Student Grade Management System");
+        title.setFont(new Font("Segoe UI", Font.BOLD, 22));
+
+        JLabel subtitle = new JLabel("Dashboard");
+        subtitle.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+
+        header.add(title, BorderLayout.NORTH);
+        header.add(subtitle, BorderLayout.SOUTH);
+
+        add(header, BorderLayout.NORTH);
+
 
         // Buttons panel
-        JPanel buttons = new JPanel(new GridLayout(2, 4, 12, 12));
-        buttons.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+        JPanel nav = new JPanel();
+        nav.setLayout(new BoxLayout(nav, BoxLayout.Y_AXIS));
+        nav.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+
+        Font btnFont = new Font("Segoe UI", Font.PLAIN, 14);
 
         JButton addBtn = new JButton("Add Student");
         JButton viewBtn = new JButton("View Students");
@@ -36,28 +50,81 @@ public class DashboardFrame extends JFrame {
         JButton clearBtn = new JButton("Clear All");
         JButton saveExitBtn = new JButton("Save & Exit");
 
-        buttons.add(addBtn);
-        buttons.add(viewBtn);
-        buttons.add(searchBtn);
-        buttons.add(deleteBtn);
-        buttons.add(updateBtn);
-        buttons.add(clearBtn);
-        buttons.add(saveExitBtn);
+        JButton[] btns = {addBtn, viewBtn, searchBtn, deleteBtn, updateBtn, clearBtn, saveExitBtn};
+        for (JButton b : btns) {
+            b.setFont(btnFont);
+            b.setAlignmentX(Component.CENTER_ALIGNMENT);
+            b.setMaximumSize(new Dimension(200, 40));
+            nav.add(b);
+            nav.add(Box.createVerticalStrut(10));
+        }
+        // Button listeners
         addBtn.addActionListener(e -> showAddStudentDialog());
+
+        viewBtn.addActionListener(e -> {
+            students = FileHandler.loadStudents();
+            refreshTable();
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Loaded " + students.size() + " students."
+            );
+        });
+
+
+        saveExitBtn.addActionListener(e -> {
+            FileHandler.saveStudents(students);
+            JOptionPane.showMessageDialog(this, "Saved! Exiting...");
+            System.exit(0);
+        });
+        addBtn.addActionListener(e -> showAddStudentDialog());
+
+        viewBtn.addActionListener(e -> refreshTable());
+
+        searchBtn.addActionListener(e ->
+                JOptionPane.showMessageDialog(this, "Search feature will be connected next.")
+        );
+
+        deleteBtn.addActionListener(e ->
+                JOptionPane.showMessageDialog(this, "Delete feature will be connected next.")
+        );
+
+        updateBtn.addActionListener(e ->
+                JOptionPane.showMessageDialog(this, "Update feature will be connected next.")
+        );
+
+        clearBtn.addActionListener(e ->
+                JOptionPane.showMessageDialog(this, "Clear All feature will be connected next.")
+        );
+
+        saveExitBtn.addActionListener(e -> {
+            FileHandler.saveStudents(students);
+            JOptionPane.showMessageDialog(this, "Saved! Exiting...");
+            System.exit(0);
+        });
+
+
 
 
         // Table setup
         String[] columns = {"Student ID", "Name", "Sub1", "Sub2", "Sub3", "Average", "Class"};
         tableModel = new DefaultTableModel(columns, 0);
         table = new JTable(tableModel);
+        table.setRowHeight(24);
+        table.setAutoCreateRowSorter(true);
+        table.getTableHeader().setReorderingAllowed(false);
+        table.setFillsViewportHeight(true);
+
         JScrollPane scrollPane = new JScrollPane(table);
 
-        // Layout: buttons on the left, table on the center
-        JPanel leftPanel = new JPanel(new BorderLayout());
-        leftPanel.add(buttons, BorderLayout.NORTH);
+// Content panelstudents = FileHandler.loadStudents();
+        JPanel contentPanel = new JPanel(new BorderLayout());
+        contentPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+        contentPanel.add(scrollPane, BorderLayout.CENTER);
 
-        add(leftPanel, BorderLayout.WEST);
-        add(scrollPane, BorderLayout.CENTER);
+
+        add(nav, BorderLayout.WEST);
+        add(contentPanel, BorderLayout.CENTER);
+
 
 
         viewBtn.addActionListener(e -> refreshTable());
@@ -76,10 +143,7 @@ public class DashboardFrame extends JFrame {
 
 
     private void refreshTable() {
-
-        students = FileHandler.loadStudents();
-
-        tableModel.setRowCount(0); // clear table
+        tableModel.setRowCount(0);
 
         for (Student s : students) {
             Object[] row = {
@@ -94,6 +158,8 @@ public class DashboardFrame extends JFrame {
             tableModel.addRow(row);
         }
     }
+
+
     private void showAddStudentDialog() {
 
         JTextField idField = new JTextField();
@@ -161,7 +227,7 @@ public class DashboardFrame extends JFrame {
             }
 
             students.add(new Student(id, name, s1, s2, s3));
-            refreshTable();
+            //refreshTable();
 
             JOptionPane.showMessageDialog(this, "✅ Student added successfully!", "Success",
                     JOptionPane.INFORMATION_MESSAGE);
