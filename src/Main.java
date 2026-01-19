@@ -16,8 +16,11 @@ public class Main {
             System.out.println("2. View All Students");
             System.out.println("3. Search Student");
             System.out.println("4. Delete Student");
-            System.out.println("5. Exit");
-            System.out.print("Choose an option (1-5): ");
+            System.out.println("5. Update Student Marks");
+            System.out.println("6. Clear All Students");
+            System.out.println("7. Exit");
+            System.out.print("Choose an option (1-7): ");
+
 
             int choice;
             try {
@@ -29,19 +32,32 @@ public class Main {
 
             if (choice == 1) {
                 addStudent(students, scanner);
-            } else if (choice == 2) {
+            }
+            else if (choice == 2) {
                 viewStudents(students);
-            } else if (choice == 3) {
+            }
+            else if (choice == 3) {
                 searchStudent(students, scanner);
-            } else if (choice == 4) {
+            }
+            else if (choice == 4) {
                 deleteStudent(students, scanner);
-            } else if (choice == 5) {
+            }
+            else if (choice == 5) {
+                updateStudent(students, scanner);
+            }
+            else if (choice == 6) {
+                clearAllStudents(students, scanner);
+            }
+            else if (choice == 7) {
                 FileHandler.saveStudents(students);
                 System.out.println("Exiting... Goodbye!");
                 break;
-            } else {
-                System.out.println("Invalid choice. Please select 1 to 5.");
             }
+            else {
+                System.out.println("Invalid choice. Please select 1 to 7.");
+            }
+
+
         }
 
         scanner.close();
@@ -143,4 +159,57 @@ public class Main {
 
         System.out.println("❌ Student with ID " + id + " not found.");
     }
+    private static void updateStudent(List<Student> students, Scanner scanner) {
+
+        if (students.isEmpty()) {
+            System.out.println("No students available to update.");
+            return;
+        }
+
+        System.out.print("Enter Student ID to update: ");
+        String id = scanner.nextLine().trim();
+
+        for (int i = 0; i < students.size(); i++) {
+            Student s = students.get(i);
+
+            if (s.getStudentId().equalsIgnoreCase(id)) {
+
+                System.out.println("Student found: " + s.getName());
+
+                double newS1 = readMark(scanner, "New Subject 1");
+                double newS2 = readMark(scanner, "New Subject 2");
+                double newS3 = readMark(scanner, "New Subject 3");
+
+                // Create a new Student object with updated marks
+                Student updated = new Student(s.getStudentId(), s.getName(), newS1, newS2, newS3);
+
+                students.set(i, updated);
+
+                System.out.println("✅ Student marks updated successfully!");
+                return;
+            }
+        }
+
+        System.out.println("❌ Student with ID " + id + " not found.");
+    }
+    private static void clearAllStudents(List<Student> students, Scanner scanner) {
+
+        if (students.isEmpty()) {
+            System.out.println("No students to clear.");
+            return;
+        }
+
+        System.out.print("Are you sure you want to delete ALL students? (yes/no): ");
+        String confirm = scanner.nextLine().trim().toLowerCase();
+
+        if (confirm.equals("yes")) {
+            students.clear();
+            FileHandler.saveStudents(students); // overwrite CSV
+            System.out.println("✅ All students have been cleared.");
+        } else {
+            System.out.println("Operation cancelled.");
+        }
+    }
+
+
 }
