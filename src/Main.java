@@ -9,6 +9,11 @@ public class Main {
 
         List<Student> students = FileHandler.loadStudents();
         Scanner scanner = new Scanner(System.in);
+        if (!login(scanner)) {
+            scanner.close();
+            return;
+        }
+
 
         while (true) {
             System.out.println("\nMenu:");
@@ -61,6 +66,32 @@ public class Main {
         }
 
         scanner.close();
+    }
+    private static boolean login(Scanner scanner) {
+
+        final String ADMIN_USER = "admin";
+        final String ADMIN_PASS = "admin123";
+
+        System.out.println("=== Login Required ===");
+
+        for (int attempts = 1; attempts <= 3; attempts++) {
+
+            System.out.print("Username: ");
+            String user = scanner.nextLine().trim();
+
+            System.out.print("Password: ");
+            String pass = scanner.nextLine().trim();
+
+            if (user.equals(ADMIN_USER) && pass.equals(ADMIN_PASS)) {
+                System.out.println("✅ Login successful!");
+                return true;
+            } else {
+                System.out.println("❌ Invalid credentials. Attempt " + attempts + " of 3.");
+            }
+        }
+
+        System.out.println("Too many failed attempts. Exiting system.");
+        return false;
     }
 
     private static void addStudent(List<Student> students, Scanner scanner) {
