@@ -80,13 +80,9 @@ public class DashboardFrame extends JFrame {
 
         viewBtn.addActionListener(e -> refreshTable());
 
-        searchBtn.addActionListener(e ->
-                JOptionPane.showMessageDialog(this, "Search feature will be connected next.")
-        );
 
-        deleteBtn.addActionListener(e ->
-                JOptionPane.showMessageDialog(this, "Delete feature will be connected next.")
-        );
+
+
 
         updateBtn.addActionListener(e ->
                 JOptionPane.showMessageDialog(this, "Update feature will be connected next.")
@@ -95,6 +91,12 @@ public class DashboardFrame extends JFrame {
         clearBtn.addActionListener(e ->
                 JOptionPane.showMessageDialog(this, "Clear All feature will be connected next.")
         );
+
+        searchBtn.addActionListener(e -> showSearchStudentDialog());
+
+        deleteBtn.addActionListener(e -> showDeleteStudentDialog());
+
+
 
         saveExitBtn.addActionListener(e -> {
             FileHandler.saveStudents(students);
@@ -158,6 +160,106 @@ public class DashboardFrame extends JFrame {
             tableModel.addRow(row);
         }
     }
+
+
+    private void showSearchStudentDialog() {
+
+        students = FileHandler.loadStudents();
+        refreshTable();
+
+
+        String id = JOptionPane.showInputDialog(this, "Enter Student ID to search:");
+
+        if (id == null) return; // user pressed cancel
+        id = id.trim();
+
+        if (id.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Student ID cannot be empty.", "Validation Error",
+                    JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        refreshTable();
+
+        for (int row = 0; row < table.getRowCount(); row++) {
+
+            String rowId = table.getValueAt(row, 0).toString(); // column 0 = Student ID
+
+            if (rowId.equals(id)) {
+                table.setRowSelectionInterval(row, row);
+                table.scrollRectToVisible(table.getCellRect(row, 0, true));
+
+                String name = table.getValueAt(row, 1).toString();
+                String avg = table.getValueAt(row, 5).toString();
+                String grade = table.getValueAt(row, 6).toString();
+
+                JOptionPane.showMessageDialog(this,
+                        "✅ Student Found!\n\nID: " + id + "\nName: " + name + "\nAverage: " + avg + "\nClass: " + grade,
+                        "Search Result",
+                        JOptionPane.INFORMATION_MESSAGE);
+
+                return;
+            }
+        }
+
+        JOptionPane.showMessageDialog(this,
+                "❌ Student with ID " + id + " not found.",
+                "Search Result",
+                JOptionPane.ERROR_MESSAGE);
+    }
+
+    private void showDeleteStudentDialog() {
+
+        // Always load latest data before deleting
+        students = FileHandler.loadStudents();
+        refreshTable();
+
+        String id = JOptionPane.showInputDialog(this, "Enter Student ID to delete:");
+
+        if (id == null) return; // Cancel
+        id = id.trim();
+
+        if (id.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Student ID cannot be empty.", "Validation Error",
+                    JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        Student found = null;
+        for (Student s : students) {
+            if (s.getStudentId().equals(id)) {
+                found = s;
+                break;
+            }
+        }
+
+        if (found == null) {
+            JOptionPane.showMessageDialog(this, "❌ Student with ID " + id + " not found.",
+                    "Delete Result", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        int confirm = JOptionPane.showConfirmDialog(
+                this,
+                "Are you sure you want to delete this student?\n\nID: " + found.getStudentId() +
+                        "\nName: " + found.getName() +
+                        "\nClass: " + found.getGrade(),
+                "Confirm Delete",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE
+        );
+
+        if (confirm == JOptionPane.YES_OPTION) {
+            students.remove(found);
+            FileHandler.saveStudents(students);
+            refreshTable();
+
+            JOptionPane.showMessageDialog(this, "✅ Student deleted successfully!",
+                    "Delete Result", JOptionPane.INFORMATION_MESSAGE);
+        }
+    }
+
+
 
 
     private void showAddStudentDialog() {
