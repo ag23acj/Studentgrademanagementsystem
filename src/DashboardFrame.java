@@ -84,13 +84,10 @@ public class DashboardFrame extends JFrame {
 
 
 
-        updateBtn.addActionListener(e ->
-                JOptionPane.showMessageDialog(this, "Update feature will be connected next.")
-        );
+        updateBtn.addActionListener(e -> showUpdateStudentDialog());
 
-        clearBtn.addActionListener(e ->
-                JOptionPane.showMessageDialog(this, "Clear All feature will be connected next.")
-        );
+
+        clearBtn.addActionListener(e -> showClearAllDialog());
 
         searchBtn.addActionListener(e -> showSearchStudentDialog());
 
@@ -258,6 +255,125 @@ public class DashboardFrame extends JFrame {
                     "Delete Result", JOptionPane.INFORMATION_MESSAGE);
         }
     }
+
+
+
+    private void showUpdateStudentDialog() {
+
+        // Load latest data
+        students = FileHandler.loadStudents();
+        refreshTable();
+
+        String id = JOptionPane.showInputDialog(this, "Enter Student ID to update:");
+
+        if (id == null) return;
+        id = id.trim();
+
+        if (id.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Student ID cannot be empty.", "Validation Error",
+                    JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        Student found = null;
+        int foundIndex = -1;
+
+        for (int i = 0; i < students.size(); i++) {
+            if (students.get(i).getStudentId().equals(id)) {
+                found = students.get(i);
+                foundIndex = i;
+                break;
+            }
+        }
+
+        if (found == null) {
+            JOptionPane.showMessageDialog(this, "❌ Student with ID " + id + " not found.",
+                    "Update Result", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+
+        JTextField sub1Field = new JTextField(String.valueOf(found.getSub1()));
+        JTextField sub2Field = new JTextField(String.valueOf(found.getSub2()));
+        JTextField sub3Field = new JTextField(String.valueOf(found.getSub3()));
+
+        JPanel panel = new JPanel(new GridLayout(0, 2, 10, 10));
+        panel.add(new JLabel("Student ID:"));
+        panel.add(new JLabel(found.getStudentId()));
+
+        panel.add(new JLabel("Name:"));
+        panel.add(new JLabel(found.getName()));
+
+        panel.add(new JLabel("New Subject 1 mark (0-100):"));
+        panel.add(sub1Field);
+
+        panel.add(new JLabel("New Subject 2 mark (0-100):"));
+        panel.add(sub2Field);
+
+        panel.add(new JLabel("New Subject 3 mark (0-100):"));
+        panel.add(sub3Field);
+
+        int result = JOptionPane.showConfirmDialog(
+                this,
+                panel,
+                "Update Student Marks",
+                JOptionPane.OK_CANCEL_OPTION,
+                JOptionPane.PLAIN_MESSAGE
+        );
+
+        if (result != JOptionPane.OK_OPTION) return;
+
+        try {
+            double newS1 = parseMarkOrThrow(sub1Field.getText(), "Subject 1");
+            double newS2 = parseMarkOrThrow(sub2Field.getText(), "Subject 2");
+            double newS3 = parseMarkOrThrow(sub3Field.getText(), "Subject 3");
+
+
+            Student updated = new Student(found.getStudentId(), found.getName(), newS1, newS2, newS3);
+            students.set(foundIndex, updated);
+
+            FileHandler.saveStudents(students);
+            refreshTable();
+
+            JOptionPane.showMessageDialog(this,
+                    "✅ Marks updated successfully!\nNew Class: " + updated.getGrade(),
+                    "Update Result",
+                    JOptionPane.INFORMATION_MESSAGE);
+
+        } catch (IllegalArgumentException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Validation Error",
+                    JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void showClearAllDialog() {
+
+        students = FileHandler.loadStudents();
+        refreshTable();
+
+        if (students.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "No students to clear.");
+            return;
+        }
+
+        int confirm = JOptionPane.showConfirmDialog(
+                this,
+                "⚠ Are you sure you want to delete ALL students?\nThis cannot be undone.",
+                "Confirm Clear All",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE
+        );
+
+        if (confirm == JOptionPane.YES_OPTION) {
+            students.clear();
+            FileHandler.saveStudents(students);
+            refreshTable();
+
+            JOptionPane.showMessageDialog(this, "✅ All students cleared successfully.");
+        }
+    }
+
+
 
 
 
