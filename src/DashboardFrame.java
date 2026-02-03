@@ -3,7 +3,14 @@ import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.util.List;
 
+
+
 public class DashboardFrame extends JFrame {
+
+    private final String subject1Name = "Programming";
+    private final String subject2Name = "Database";
+    private final String subject3Name = "Software Engineering";
+
 
     private List<Student> students;
 
@@ -49,8 +56,10 @@ public class DashboardFrame extends JFrame {
         JButton updateBtn = new JButton("Update Marks");
         JButton clearBtn = new JButton("Clear All");
         JButton saveExitBtn = new JButton("Save & Exit");
+        JButton restoreBtn = new JButton("Restore Backup");
 
-        JButton[] btns = {addBtn, viewBtn, searchBtn, deleteBtn, updateBtn, clearBtn, saveExitBtn};
+
+        JButton[] btns = {addBtn, viewBtn, searchBtn, deleteBtn, updateBtn, clearBtn,restoreBtn, saveExitBtn};
         for (JButton b : btns) {
             b.setFont(btnFont);
             b.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -58,54 +67,43 @@ public class DashboardFrame extends JFrame {
             nav.add(b);
             nav.add(Box.createVerticalStrut(10));
         }
-        // Button listeners
+
+        // Load students at startup
+
+
+// Button listeners (ONLY ONCE)
         addBtn.addActionListener(e -> showAddStudentDialog());
 
         viewBtn.addActionListener(e -> {
             students = FileHandler.loadStudents();
             refreshTable();
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Loaded " + students.size() + " students."
-            );
+            JOptionPane.showMessageDialog(this, "Loaded " + students.size() + " students.");
         });
-
-
-        saveExitBtn.addActionListener(e -> {
-            FileHandler.saveStudents(students);
-            JOptionPane.showMessageDialog(this, "Saved! Exiting...");
-            System.exit(0);
-        });
-        addBtn.addActionListener(e -> showAddStudentDialog());
-
-        viewBtn.addActionListener(e -> refreshTable());
-
-
-
-
-
-        updateBtn.addActionListener(e -> showUpdateStudentDialog());
-
-
-        clearBtn.addActionListener(e -> showClearAllDialog());
 
         searchBtn.addActionListener(e -> showSearchStudentDialog());
-
         deleteBtn.addActionListener(e -> showDeleteStudentDialog());
-
-
+        updateBtn.addActionListener(e -> showUpdateStudentDialog());
+        clearBtn.addActionListener(e -> showClearAllDialog());
+        restoreBtn.addActionListener(e -> showRestoreBackupDialog());
 
         saveExitBtn.addActionListener(e -> {
             FileHandler.saveStudents(students);
             JOptionPane.showMessageDialog(this, "Saved! Exiting...");
             System.exit(0);
         });
+
 
 
 
 
         // Table setup
-        String[] columns = {"Student ID", "Name", "Sub1", "Sub2", "Sub3", "Average", "Class"};
+        String[] columns = {"Student ID", "Name",
+                subject1Name, subject1Name + " Status",
+                subject2Name, subject2Name + " Status",
+                subject3Name, subject3Name + " Status",
+                "Avg", "Class"};
+
+
         tableModel = new DefaultTableModel(columns, 0);
         table = new JTable(tableModel);
         table.setRowHeight(24);
@@ -119,6 +117,10 @@ public class DashboardFrame extends JFrame {
         JPanel contentPanel = new JPanel(new BorderLayout());
         contentPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
         contentPanel.add(scrollPane, BorderLayout.CENTER);
+
+        students = FileHandler.loadStudents();
+        refreshTable();
+        setVisible(true);
 
 
         add(nav, BorderLayout.WEST);
@@ -145,18 +147,27 @@ public class DashboardFrame extends JFrame {
         tableModel.setRowCount(0);
 
         for (Student s : students) {
-            Object[] row = {
+            Object[] row = new Object[]{
                     s.getStudentId(),
                     s.getName(),
+
                     s.getSub1(),
+                    s.getSub1Status(),
+
                     s.getSub2(),
+                    s.getSub2Status(),
+
                     s.getSub3(),
+                    s.getSub3Status(),
+
                     s.getAverage(),
                     s.getGrade()
             };
+
             tableModel.addRow(row);
         }
     }
+
 
 
     private void showSearchStudentDialog() {
@@ -187,8 +198,9 @@ public class DashboardFrame extends JFrame {
                 table.scrollRectToVisible(table.getCellRect(row, 0, true));
 
                 String name = table.getValueAt(row, 1).toString();
-                String avg = table.getValueAt(row, 5).toString();
-                String grade = table.getValueAt(row, 6).toString();
+                String avg = table.getValueAt(row, 8).toString();
+                String grade = table.getValueAt(row, 9).toString();
+
 
                 JOptionPane.showMessageDialog(this,
                         "✅ Student Found!\n\nID: " + id + "\nName: " + name + "\nAverage: " + avg + "\nClass: " + grade,
@@ -365,6 +377,8 @@ public class DashboardFrame extends JFrame {
         );
 
         if (confirm == JOptionPane.YES_OPTION) {
+            FileHandler.backupStudents(); // backup before deleting everything
+
             students.clear();
             FileHandler.saveStudents(students);
             refreshTable();
@@ -373,6 +387,35 @@ public class DashboardFrame extends JFrame {
         }
     }
 
+    private void showRestoreBackupDialog() {
+
+        int confirm = JOptionPane.showConfirmDialog(
+                this,
+                "Restore last backup? This will replace current student list.",
+                "Restore Backup",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.QUESTION_MESSAGE
+        );
+
+        if (confirm != JOptionPane.YES_OPTION) return;
+
+        boolean ok = FileHandler.restoreBackup();
+
+        if (!ok) {
+            JOptionPane.showMessageDialog(this,
+                    "❌ No backup found. Clear All must be used at least once (with backup enabled).",
+                    "Restore Backup",
+                    JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        students = FileHandler.loadStudents();
+        refreshTable();
+
+        JOptionPane.showMessageDialog(this, "✅ Backup restored successfully!");
+    }
+
+
 
 
 
@@ -380,27 +423,41 @@ public class DashboardFrame extends JFrame {
 
     private void showAddStudentDialog() {
 
+        // Input fields
         JTextField idField = new JTextField();
         JTextField nameField = new JTextField();
         JTextField sub1Field = new JTextField();
         JTextField sub2Field = new JTextField();
         JTextField sub3Field = new JTextField();
 
+        // Status dropdowns
+        JComboBox<ExamStatus> s1StatusBox = new JComboBox<>(ExamStatus.values());
+        JComboBox<ExamStatus> s2StatusBox = new JComboBox<>(ExamStatus.values());
+        JComboBox<ExamStatus> s3StatusBox = new JComboBox<>(ExamStatus.values());
+
+        // Panel layout
         JPanel panel = new JPanel(new GridLayout(0, 2, 10, 10));
+
         panel.add(new JLabel("Student ID (numbers):"));
         panel.add(idField);
 
         panel.add(new JLabel("Name:"));
         panel.add(nameField);
 
-        panel.add(new JLabel("Subject 1 mark (0-100):"));
+        panel.add(new JLabel(subject1Name + " mark (0-100):"));
         panel.add(sub1Field);
+        panel.add(new JLabel("Subject 1 status:"));
+        panel.add(s1StatusBox);
 
-        panel.add(new JLabel("Subject 2 mark (0-100):"));
+        panel.add(new JLabel(subject2Name + " mark (0-100):"));
         panel.add(sub2Field);
+        panel.add(new JLabel("Subject 2 status:"));
+        panel.add(s2StatusBox);
 
-        panel.add(new JLabel("Subject 3 mark (0-100):"));
+        panel.add(new JLabel(subject3Name + " mark (0-100):"));
         panel.add(sub3Field);
+        panel.add(new JLabel("Subject 3 status:"));
+        panel.add(s3StatusBox);
 
         int result = JOptionPane.showConfirmDialog(
                 this,
@@ -410,23 +467,21 @@ public class DashboardFrame extends JFrame {
                 JOptionPane.PLAIN_MESSAGE
         );
 
-        if (result != JOptionPane.OK_OPTION) {
-            return;
-        }
+        if (result != JOptionPane.OK_OPTION) return;
 
-        // Validation
+        // Read + validate
         String id = idField.getText().trim();
         String name = nameField.getText().trim();
 
         if (id.isEmpty() || name.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Student ID and Name cannot be empty.", "Validation Error",
-                    JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Student ID and Name cannot be empty.",
+                    "Validation Error", JOptionPane.ERROR_MESSAGE);
             return;
         }
 
         if (!id.matches("\\d+")) {
-            JOptionPane.showMessageDialog(this, "Student ID must contain only numbers.", "Validation Error",
-                    JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Student ID must contain only numbers.",
+                    "Validation Error", JOptionPane.ERROR_MESSAGE);
             return;
         }
 
@@ -435,26 +490,34 @@ public class DashboardFrame extends JFrame {
             double s2 = parseMarkOrThrow(sub2Field.getText(), "Subject 2");
             double s3 = parseMarkOrThrow(sub3Field.getText(), "Subject 3");
 
-            // Check duplicate ID
+            ExamStatus st1 = (ExamStatus) s1StatusBox.getSelectedItem();
+            ExamStatus st2 = (ExamStatus) s2StatusBox.getSelectedItem();
+            ExamStatus st3 = (ExamStatus) s3StatusBox.getSelectedItem();
+
+            // load latest list to check duplicates properly
+            students = FileHandler.loadStudents();
+
             for (Student s : students) {
                 if (s.getStudentId().equals(id)) {
-                    JOptionPane.showMessageDialog(this, "This Student ID already exists!", "Duplicate ID",
-                            JOptionPane.ERROR_MESSAGE);
+                    JOptionPane.showMessageDialog(this, "This Student ID already exists!",
+                            "Duplicate ID", JOptionPane.ERROR_MESSAGE);
                     return;
                 }
             }
 
-            students.add(new Student(id, name, s1, s2, s3));
-            //refreshTable();
+            students.add(new Student(id, name, s1, st1, s2, st2, s3, st3));
+            FileHandler.saveStudents(students);
+            refreshTable();
 
-            JOptionPane.showMessageDialog(this, "✅ Student added successfully!", "Success",
-                    JOptionPane.INFORMATION_MESSAGE);
+            JOptionPane.showMessageDialog(this, "✅ Student added successfully!",
+                    "Success", JOptionPane.INFORMATION_MESSAGE);
 
         } catch (IllegalArgumentException ex) {
-            JOptionPane.showMessageDialog(this, ex.getMessage(), "Validation Error",
-                    JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, ex.getMessage(),
+                    "Validation Error", JOptionPane.ERROR_MESSAGE);
         }
     }
+
     private double parseMarkOrThrow(String text, String fieldName) {
         try {
             double mark = Double.parseDouble(text.trim());
