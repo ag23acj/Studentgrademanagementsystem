@@ -31,7 +31,12 @@ public class Student {
         this.sub3 = applyStatusRule(sub3, sub3Status);
 
         this.average = GradeUtils.calculateAverage(this.sub1, this.sub2, this.sub3);
-        this.grade = GradeUtils.calculateFinalOutcome(this.sub1, this.sub2, this.sub3);
+
+        this.grade = GradeUtils.calculateFinalOutcome(
+                this.sub1, this.sub2, this.sub3,
+                this.sub1Status, this.sub2Status, this.sub3Status
+        );
+
 
     }
 
@@ -73,4 +78,17 @@ public class Student {
 
     public double getAverage() { return average; }
     public String getGrade() { return grade; }
+
+    public String getResitSubjects(String sub1Name, String sub2Name, String sub3Name) {
+        StringBuilder sb = new StringBuilder();
+
+        if (sub1Status == ExamStatus.ABSENT || sub1 < 40) sb.append(sub1Name).append(", ");
+        if (sub2Status == ExamStatus.ABSENT || sub2 < 40) sb.append(sub2Name).append(", ");
+        if (sub3Status == ExamStatus.ABSENT || sub3 < 40) sb.append(sub3Name).append(", ");
+
+        if (sb.length() == 0) return "None";
+        return sb.substring(0, sb.length() - 2);
+    }
+
 }
+
