@@ -3,47 +3,80 @@ import java.awt.*;
 
 public class LoginFrame extends JFrame {
 
+    private JTextField usernameField;
+    private JPasswordField passwordField;
+    private JButton loginButton;
+
     public LoginFrame() {
+
         setTitle("Student Grade Management System - Login");
-        setSize(400, 220);
+        setSize(400, 250);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
+        setLayout(new BorderLayout());
 
-        JPanel panel = new JPanel(new GridLayout(4, 1, 10, 10));
-        panel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+        JLabel title = new JLabel("Login", SwingConstants.CENTER);
+        title.setFont(new Font("Segoe UI", Font.BOLD, 20));
+        title.setBorder(BorderFactory.createEmptyBorder(20, 0, 10, 0));
+        add(title, BorderLayout.NORTH);
 
-        JTextField usernameField = new JTextField();
-        JPasswordField passwordField = new JPasswordField();
+        JPanel formPanel = new JPanel(new GridLayout(0, 2, 10, 10));
+        formPanel.setBorder(BorderFactory.createEmptyBorder(20, 40, 20, 40));
 
-        panel.add(new JLabel("Username:"));
-        panel.add(usernameField);
+        formPanel.add(new JLabel("Username:"));
+        usernameField = new JTextField();
+        formPanel.add(usernameField);
 
-        panel.add(new JLabel("Password:"));
-        panel.add(passwordField);
+        formPanel.add(new JLabel("Password:"));
+        passwordField = new JPasswordField();
+        formPanel.add(passwordField);
 
-        JButton loginBtn = new JButton("Login");
-        JLabel message = new JLabel("", SwingConstants.CENTER);
+        add(formPanel, BorderLayout.CENTER);
 
-        loginBtn.addActionListener(e -> {
-            String user = usernameField.getText().trim();
-            String pass = new String(passwordField.getPassword()).trim();
+        loginButton = new JButton("Login");
+        loginButton.setFont(new Font("Segoe UI", Font.PLAIN, 14));
 
-            if (user.equals("admin") && pass.equals("admin123")) {
-                message.setText("✅ Login successful!");
-                dispose(); // close login window
-                new DashboardFrame(); // open main window
-            } else {
-                message.setText("❌ Invalid login.");
+        JPanel buttonPanel = new JPanel();
+        buttonPanel.add(loginButton);
+        add(buttonPanel, BorderLayout.SOUTH);
+
+        loginButton.addActionListener(e -> {
+
+            String username = usernameField.getText().trim();
+            String password = new String(passwordField.getPassword()).trim();
+
+            // Admin
+            if (username.equalsIgnoreCase("admin") && password.equals("admin123")) {
+                new DashboardFrame(true);
+                dispose();
+                return;
             }
+
+            // Non-admin (tutor/viewer)
+            if (username.equalsIgnoreCase("tutor") && password.equals("tutor123")) {
+                new DashboardFrame(false);
+                dispose();
+                return;
+            }
+
+            if (username.equalsIgnoreCase("viewer") && password.equals("viewer123")) {
+                new DashboardFrame(false);
+                dispose();
+                return;
+            }
+
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Invalid username or password.\n\nTry:\nadmin / admin123",
+                    "Login Failed",
+                    JOptionPane.ERROR_MESSAGE
+            );
         });
 
-        JPanel bottom = new JPanel(new BorderLayout());
-        bottom.add(loginBtn, BorderLayout.NORTH);
-        bottom.add(message, BorderLayout.SOUTH);
-
-        add(panel, BorderLayout.CENTER);
-        add(bottom, BorderLayout.SOUTH);
-
         setVisible(true);
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(LoginFrame::new);
     }
 }

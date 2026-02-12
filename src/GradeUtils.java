@@ -35,4 +35,14 @@ public class GradeUtils {
         double avg = calculateAverage(s1, s2, s3);
         return calculateDegreeClass(avg);
     }
+
+
+    public static String eligibleUpgradeTo(double avg) {
+        if (avg >= 69 && avg < 70) return "First (1st)";
+        if (avg >= 59 && avg < 60) return "Upper Second (2:1)";
+        if (avg >= 49 && avg < 50) return "Lower Second (2:2)";
+        if (avg >= 39 && avg < 40) return "Third (3rd)";
+        return null;
+    }
+
 }
