@@ -4,14 +4,9 @@ import java.util.List;
 
 public class FileHandler {
 
-    // Always save & load from the SAME place
-    private static final File FILE =
-            new File(System.getProperty("user.dir"), "students.csv");
+    private static final File FILE = new File(System.getProperty("user.dir"), "students.csv");
+    private static final File BACKUP_FILE = new File(System.getProperty("user.dir"), "students_backup.csv");
 
-    private static final File BACKUP_FILE =
-            new File(System.getProperty("user.dir"), "students_backup.csv");
-
-    // ================= SAVE =================
     public static void saveStudents(List<Student> students) {
         try (PrintWriter writer = new PrintWriter(new FileWriter(FILE))) {
 
@@ -30,26 +25,23 @@ public class FileHandler {
 
                                 s.getModule3Name() + "," +
                                 s.getSub3() + "," +
-                                s.getSub3Status()
+                                s.getSub3Status() + "," +
+
+                                s.isUpgradeApproved()
                 );
             }
 
-            System.out.println("✅ Students saved to: " + FILE.getAbsolutePath());
+            System.out.println("✅ Saved: " + FILE.getAbsolutePath());
 
-        } catch (IOException e) {
+        } catch (Exception e) {
             System.out.println("❌ Save error: " + e.getMessage());
         }
     }
 
-    // ================= LOAD =================
     public static List<Student> loadStudents() {
-
         List<Student> students = new ArrayList<>();
 
-        if (!FILE.exists()) {
-            System.out.println("ℹ students.csv not found yet.");
-            return students;
-        }
+        if (!FILE.exists()) return students;
 
         try (BufferedReader reader = new BufferedReader(new FileReader(FILE))) {
 
@@ -57,8 +49,6 @@ public class FileHandler {
             while ((line = reader.readLine()) != null) {
 
                 String[] p = line.split(",");
-
-                // Expecting 11 columns
                 if (p.length < 11) continue;
 
                 String id = p[0].trim();
@@ -76,15 +66,22 @@ public class FileHandler {
                 double s3 = Double.parseDouble(p[9].trim());
                 ExamStatus st3 = parseStatus(p[10]);
 
-                students.add(
-                        new Student(id, name,
-                                m1, s1, st1,
-                                m2, s2, st2,
-                                m3, s3, st3)
-                );
-            }
+                boolean approved = false;
+                if (p.length >= 12) {
+                    approved = Boolean.parseBoolean(p[11].trim());
+                }
 
-            System.out.println("📂 Students loaded from: " + FILE.getAbsolutePath());
+                Student student = new Student(id, name,
+                        m1, s1, st1,
+                        m2, s2, st2,
+                        m3, s3, st3
+                );
+
+                student.setUpgradeApproved(approved);
+                student.applyApprovedUpgrade();
+
+                students.add(student);
+            }
 
         } catch (Exception e) {
             System.out.println("❌ Load error: " + e.getMessage());
@@ -93,9 +90,7 @@ public class FileHandler {
         return students;
     }
 
-    // ================= BACKUP =================
     public static void backupStudents() {
-
         if (!FILE.exists()) return;
 
         try (BufferedReader reader = new BufferedReader(new FileReader(FILE));
@@ -108,14 +103,12 @@ public class FileHandler {
 
             System.out.println("💾 Backup created.");
 
-        } catch (IOException e) {
-            System.out.println("❌ Backup failed: " + e.getMessage());
+        } catch (Exception e) {
+            System.out.println("❌ Backup error: " + e.getMessage());
         }
     }
 
-    // ================= RESTORE =================
     public static boolean restoreBackup() {
-
         if (!BACKUP_FILE.exists()) return false;
 
         try (BufferedReader reader = new BufferedReader(new FileReader(BACKUP_FILE));
@@ -126,22 +119,18 @@ public class FileHandler {
                 writer.println(line);
             }
 
-            System.out.println("🔁 Backup restored.");
             return true;
 
-        } catch (IOException e) {
-            System.out.println("❌ Restore failed: " + e.getMessage());
+        } catch (Exception e) {
+            System.out.println("❌ Restore error: " + e.getMessage());
             return false;
         }
     }
 
-    // ================= SAFE ENUM PARSER =================
     private static ExamStatus parseStatus(String value) {
-
         try {
             return ExamStatus.valueOf(value.trim());
         } catch (Exception e) {
-            // Default for old CSV values like "NORMAL"
             return ExamStatus.FIRST_SITTING;
         }
     }

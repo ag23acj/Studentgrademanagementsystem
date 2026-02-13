@@ -18,18 +18,14 @@ public class Student {
     private double average;
     private String grade;
 
-    // Borderline upgrade workflow
-    private boolean upgradeApproved = false;
-    private String upgradedClass = "";
-    private String borderlineFlag = "-";
+    // Borderline + approval
+    private boolean borderline;
+    private boolean upgradeApproved;
 
     public Student(String studentId, String name,
-                   String module1Name,
-                   double sub1, ExamStatus sub1Status,
-                   String module2Name,
-                   double sub2, ExamStatus sub2Status,
-                   String module3Name,
-                   double sub3, ExamStatus sub3Status) {
+                   String module1Name, double sub1, ExamStatus sub1Status,
+                   String module2Name, double sub2, ExamStatus sub2Status,
+                   String module3Name, double sub3, ExamStatus sub3Status) {
 
         this.studentId = studentId;
         this.name = name;
@@ -38,53 +34,37 @@ public class Student {
         this.module2Name = module2Name;
         this.module3Name = module3Name;
 
+        this.sub1 = sub1;
+        this.sub2 = sub2;
+        this.sub3 = sub3;
+
         this.sub1Status = sub1Status;
         this.sub2Status = sub2Status;
         this.sub3Status = sub3Status;
 
-        // Apply status rules to marks (absent -> mark becomes 0)
-        this.sub1 = applyStatusRule(sub1, sub1Status);
-        this.sub2 = applyStatusRule(sub2, sub2Status);
-        this.sub3 = applyStatusRule(sub3, sub3Status);
+        // Calculate average and grade
+        this.average = GradeUtils.calculateAverage(sub1, sub2, sub3);
 
-        // Calculate avg
-        this.average = GradeUtils.calculateAverage(this.sub1, this.sub2, this.sub3);
-
-        // Calculate final outcome based on marks + status
         this.grade = GradeUtils.calculateFinalOutcome(
-                this.sub1, this.sub2, this.sub3,
-                this.sub1Status, this.sub2Status, this.sub3Status
+                sub1, sub2, sub3,
+                sub1Status, sub2Status, sub3Status
         );
 
-        // Borderline only if PASS classification (not Fail/Resit)
-        if (this.grade.equals("Fail") || this.grade.equals("Resit Required")) {
-            this.borderlineFlag = "-";
-        } else {
-            String target = GradeUtils.eligibleUpgradeTo(this.average);
-            this.borderlineFlag = (target == null) ? "-" : "Eligible for Review (" + target + ")";
+        // Borderline only if not Fail/Resit
+        this.borderline = GradeUtils.isBorderline(this.average)
+                && !this.grade.equals("Fail")
+                && !this.grade.equals("Resit Required");
+
+        this.upgradeApproved = false;
+    }
+
+    public void applyApprovedUpgrade() {
+        if (borderline && upgradeApproved) {
+            this.grade = GradeUtils.upgradeOneLevel(this.grade);
         }
-
-        // If already approved (loaded later), override grade
-        if (upgradeApproved && upgradedClass != null && !upgradedClass.isEmpty()) {
-            this.grade = upgradedClass;
-            this.borderlineFlag = "Approved";
-        }
     }
 
-    private double applyStatusRule(double mark, ExamStatus status) {
-        if (status == ExamStatus.ABSENT) return 0.0;
-        return mark;
-    }
-
-    // Admin approves upgrade
-    public void approveUpgrade(String targetClass) {
-        this.upgradeApproved = true;
-        this.upgradedClass = targetClass;
-        this.grade = targetClass;
-        this.borderlineFlag = "Approved";
-    }
-
-    // --- getters ---
+    // Getters
     public String getStudentId() { return studentId; }
     public String getName() { return name; }
 
@@ -103,21 +83,10 @@ public class Student {
     public double getAverage() { return average; }
     public String getGrade() { return grade; }
 
+    public boolean isBorderline() { return borderline; }
     public boolean isUpgradeApproved() { return upgradeApproved; }
-    public String getUpgradedClass() { return upgradedClass; }
-    public String getBorderlineFlag() { return borderlineFlag; }
 
-    // Used when loading from CSV
-    public void setUpgradeApproved(boolean approved) {
-        this.upgradeApproved = approved;
-    }
-
-    public void setUpgradedClass(String upgradedClass) {
-        this.upgradedClass = upgradedClass;
-
-        if (upgradeApproved && upgradedClass != null && !upgradedClass.isEmpty()) {
-            this.grade = upgradedClass;
-            this.borderlineFlag = "Approved";
-        }
+    public void setUpgradeApproved(boolean upgradeApproved) {
+        this.upgradeApproved = upgradeApproved;
     }
 }
