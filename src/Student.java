@@ -1,26 +1,29 @@
 public class Student {
 
-    private String studentId;
-    private String name;
+    private final String studentId;
+    private final String name;
 
-    private String module1Name;
-    private String module2Name;
-    private String module3Name;
+    private final String module1Name;
+    private final String module2Name;
+    private final String module3Name;
 
-    private double sub1;
-    private double sub2;
-    private double sub3;
+    private final double sub1;
+    private final double sub2;
+    private final double sub3;
 
-    private ExamStatus sub1Status;
-    private ExamStatus sub2Status;
-    private ExamStatus sub3Status;
+    private final ExamStatus sub1Status;
+    private final ExamStatus sub2Status;
+    private final ExamStatus sub3Status;
 
-    private double average;
-    private String grade;
+    private final double average;
 
-    // Borderline + approval
-    private boolean borderline;
-    private boolean upgradeApproved;
+    // outcome + borderline workflow
+    private String grade;                 // displayed final outcome
+    private final boolean borderline;     // computed from avg
+    private boolean upgradeApproved;      // admin toggles this
+
+    // ✅ NEW: automatic feedback (generated)
+    private final String feedback;
 
     public Student(String studentId, String name,
                    String module1Name, double sub1, ExamStatus sub1Status,
@@ -42,7 +45,6 @@ public class Student {
         this.sub2Status = sub2Status;
         this.sub3Status = sub3Status;
 
-        // Calculate average and grade
         this.average = GradeUtils.calculateAverage(sub1, sub2, sub3);
 
         this.grade = GradeUtils.calculateFinalOutcome(
@@ -50,17 +52,34 @@ public class Student {
                 sub1Status, sub2Status, sub3Status
         );
 
-        // Borderline only if not Fail/Resit
+        // Borderline only if NOT Fail/Resit
         this.borderline = GradeUtils.isBorderline(this.average)
                 && !this.grade.equals("Fail")
                 && !this.grade.equals("Resit Required");
 
         this.upgradeApproved = false;
+
+        // ✅ NEW: feedback is generated automatically
+        this.feedback = FeedbackUtils.generateFeedback(this);
+    }
+
+    public void setUpgradeApproved(boolean upgradeApproved) {
+        this.upgradeApproved = upgradeApproved;
+    }
+
+    public boolean isUpgradeApproved() {
+        return upgradeApproved;
+    }
+
+    public boolean isBorderline() {
+        return borderline;
     }
 
     public void applyApprovedUpgrade() {
         if (borderline && upgradeApproved) {
             this.grade = GradeUtils.upgradeOneLevel(this.grade);
+            // feedback won't auto-update here (that’s OK because we rebuild Student on reload/update)
+            // if you want feedback to update instantly, we can regenerate it too.
         }
     }
 
@@ -83,10 +102,6 @@ public class Student {
     public double getAverage() { return average; }
     public String getGrade() { return grade; }
 
-    public boolean isBorderline() { return borderline; }
-    public boolean isUpgradeApproved() { return upgradeApproved; }
-
-    public void setUpgradeApproved(boolean upgradeApproved) {
-        this.upgradeApproved = upgradeApproved;
-    }
+    // ✅ NEW: expose feedback
+    public String getFeedback() { return feedback; }
 }

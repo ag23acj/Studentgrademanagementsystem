@@ -4,53 +4,55 @@ import java.awt.*;
 public class LoginFrame extends JFrame {
 
     public LoginFrame() {
-        setTitle("Login");
-        setSize(400, 250);
+
+        setTitle("Login - Student Grade Management System");
+        setSize(420, 260);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
 
-        JTextField usernameField = new JTextField();
-        JPasswordField passwordField = new JPasswordField();
-        JButton loginBtn = new JButton("Login");
-
         JPanel panel = new JPanel(new GridLayout(0, 2, 10, 10));
-        panel.setBorder(BorderFactory.createEmptyBorder(30, 30, 30, 30));
+        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+
+        JTextField userField = new JTextField();
+        JPasswordField passField = new JPasswordField();
 
         panel.add(new JLabel("Username:"));
-        panel.add(usernameField);
+        panel.add(userField);
 
         panel.add(new JLabel("Password:"));
-        panel.add(passwordField);
+        panel.add(passField);
+
+        JButton loginButton = new JButton("Login");
 
         panel.add(new JLabel(""));
-        panel.add(loginBtn);
+        panel.add(loginButton);
 
         add(panel);
 
-        loginBtn.addActionListener(e -> {
-            String username = usernameField.getText().trim();
-            String password = new String(passwordField.getPassword()).trim();
+        // Default test accounts
+        // admin / admin123
+        // user  / user123
+        loginButton.addActionListener(e -> {
 
-            if (username.equalsIgnoreCase("admin") && password.equals("admin123")) {
-                new DashboardFrame(true);
-                dispose();
+            String username = userField.getText().trim();
+            String password = new String(passField.getPassword());
+
+            UserRole role;
+
+            if (username.equals("admin") && password.equals("admin123")) {
+                role = UserRole.ADMIN;
+            } else if (username.equals("user") && password.equals("user123")) {
+                role = UserRole.TUTOR;
+            } else {
+                JOptionPane.showMessageDialog(this, "❌ Invalid login.");
                 return;
             }
 
-            if (username.equalsIgnoreCase("user") && password.equals("user123")) {
-                new DashboardFrame(false);
-                dispose();
-                return;
-            }
-
-            JOptionPane.showMessageDialog(this, "Invalid login!",
-                    "Login Failed", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "✅ Login successful: " + role);
+            dispose();
+            new DashboardFrame(role);
         });
 
         setVisible(true);
-    }
-
-    public static void main(String[] args) {
-        SwingUtilities.invokeLater(LoginFrame::new);
     }
 }
