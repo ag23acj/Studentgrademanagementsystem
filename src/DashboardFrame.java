@@ -56,9 +56,13 @@ public class DashboardFrame extends JFrame {
         JButton approveBtn = new JButton("Approve Upgrade");
         JButton clearBtn = new JButton("Clear All");
         JButton restoreBtn = new JButton("Restore Backup");
+        JButton riskBtn = new JButton("View At-Risk Students");
+
         JButton saveExitBtn = new JButton("Save & Exit");
 
-        JButton[] btns = {addBtn, viewBtn, searchBtn, deleteBtn, updateBtn, approveBtn, clearBtn, restoreBtn, saveExitBtn};
+
+        JButton[] btns = {addBtn, viewBtn, riskBtn, searchBtn, deleteBtn, updateBtn, approveBtn, clearBtn, restoreBtn, saveExitBtn};
+
 
         for (JButton b : btns) {
             b.setFont(btnFont);
@@ -80,8 +84,10 @@ public class DashboardFrame extends JFrame {
                 "Module 2", "Mark 2", "Status 2",
                 "Module 3", "Mark 3", "Status 3",
                 "Average", "Final Outcome",
-                "Borderline", "Approved"
+                "Borderline", "Approved",
+                "At-Risk"
         };
+
 
         tableModel = new DefaultTableModel(columns, 0) {
             @Override
@@ -142,6 +148,9 @@ public class DashboardFrame extends JFrame {
 
         approveBtn.addActionListener(e -> approveSelectedStudent());
 
+        riskBtn.addActionListener(e -> showAtRiskStudents());
+
+
         saveExitBtn.addActionListener(e -> {
             FileHandler.saveStudents(students);
             JOptionPane.showMessageDialog(this, "Saved! Exiting...");
@@ -153,9 +162,52 @@ public class DashboardFrame extends JFrame {
         setVisible(true);
     }
 
+    private void showAtRiskStudents() {
+        students = FileHandler.loadStudents();
+        tableModel.setRowCount(0);
+
+        int count = 0;
+        for (Student s : students) {
+            if (RiskUtils.isAtRisk(s)) {
+                count++;
+
+                tableModel.addRow(new Object[]{
+                        s.getStudentId(),
+                        s.getName(),
+
+                        s.getModule1Name(),
+                        s.getSub1(),
+                        prettyStatus(s.getSub1Status()),
+
+                        s.getModule2Name(),
+                        s.getSub2(),
+                        prettyStatus(s.getSub2Status()),
+
+                        s.getModule3Name(),
+                        s.getSub3(),
+                        prettyStatus(s.getSub3Status()),
+
+                        String.format("%.2f", s.getAverage()),
+                        s.getGrade(),
+
+                        s.isBorderline() ? "Yes" : "No",
+                        s.isUpgradeApproved() ? "Yes" : "No",
+                        "Yes"
+                });
+            }
+        }
+
+        JOptionPane.showMessageDialog(this,
+                "At-Risk students: " + count,
+                "At-Risk List",
+                JOptionPane.INFORMATION_MESSAGE);
+    }
+
+
     // ======================
     // TABLE + FEEDBACK
     // ======================
+
 
     private void refreshTable() {
         students = FileHandler.loadStudents(); // always load latest
@@ -182,7 +234,9 @@ public class DashboardFrame extends JFrame {
                     s.getGrade(),
 
                     s.isBorderline() ? "Yes" : "No",
-                    s.isUpgradeApproved() ? "Yes" : "No"
+                    s.isUpgradeApproved() ? "Yes" : "No",
+                    RiskUtils.isAtRisk(s) ? "Yes" : "No"
+
             };
             tableModel.addRow(row);
         }
@@ -191,25 +245,44 @@ public class DashboardFrame extends JFrame {
     }
 
     private void updateFeedbackForSelectedRow() {
+
         int viewRow = table.getSelectedRow();
         if (viewRow == -1) {
-            feedbackArea.setText("Select a student row to view automatic feedback.");
+            feedbackArea.setText("Select a student to view feedback.");
             return;
         }
 
+        // Convert view row → model row (important for sorted tables)
         int modelRow = table.convertRowIndexToModel(viewRow);
-        String id = tableModel.getValueAt(modelRow, 0).toString();
+
+        String studentId = tableModel.getValueAt(modelRow, 0).toString();
 
         for (Student s : students) {
-            if (s.getStudentId().equals(id)) {
-                feedbackArea.setText(s.getFeedback());
+            if (s.getStudentId().equals(studentId)) {
+
+                StringBuilder text = new StringBuilder();
+                text.append(s.getFeedback());
+
+                // ---- At-Risk section ----
+                if (RiskUtils.isAtRisk(s)) {
+                    text.append("\n\n---\n🚨 At-Risk Indicators:\n");
+
+                    for (String reason : RiskUtils.getRiskReasons(s)) {
+                        text.append("• ").append(reason).append("\n");
+                    }
+                } else {
+                    text.append("\n\n---\nNo at-risk indicators detected.");
+                }
+
+                feedbackArea.setText(text.toString());
                 feedbackArea.setCaretPosition(0);
                 return;
             }
         }
 
-        feedbackArea.setText("Feedback not available.");
+        feedbackArea.setText("Feedback not available for the selected student.");
     }
+
 
     private String prettyStatus(ExamStatus st) {
         if (st == null) return "First Sitting";
