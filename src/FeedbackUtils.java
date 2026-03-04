@@ -81,7 +81,7 @@ public class FeedbackUtils {
                     "• An academic review may be required (admin approval workflow).";
         }
 
-        // Approved info
+        // Approved infos
         String approvedNote = "";
         if (s.isUpgradeApproved()) {
             approvedNote = "\n\nApproval status:\n" +
