@@ -1,53 +1,98 @@
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
 public class FileHandler {
 
-    private static final File FILE = new File(System.getProperty("user.dir"), "students.csv");
-    private static final File BACKUP_FILE = new File(System.getProperty("user.dir"), "students_backup.csv");
+    private static final File CSV_FILE = new File(System.getProperty("user.dir"), "students.csv");
+    private static boolean initialized = false;
 
-    public static void saveStudents(List<Student> students) {
-        try (PrintWriter writer = new PrintWriter(new FileWriter(FILE))) {
+    private static void initializeDatabase() {
+        if (initialized) return;
 
-            for (Student s : students) {
-                writer.println(
-                        s.getStudentId() + "," +
-                                s.getName() + "," +
+        String createStudentsTable = """
+                CREATE TABLE IF NOT EXISTS students (
+                    student_id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL,
 
-                                s.getModule1Name() + "," +
-                                s.getSub1() + "," +
-                                s.getSub1Status() + "," +
+                    module1_name TEXT NOT NULL,
+                    sub1 REAL NOT NULL,
+                    sub1_status TEXT NOT NULL,
 
-                                s.getModule2Name() + "," +
-                                s.getSub2() + "," +
-                                s.getSub2Status() + "," +
+                    module2_name TEXT NOT NULL,
+                    sub2 REAL NOT NULL,
+                    sub2_status TEXT NOT NULL,
 
-                                s.getModule3Name() + "," +
-                                s.getSub3() + "," +
-                                s.getSub3Status() + "," +
+                    module3_name TEXT NOT NULL,
+                    sub3 REAL NOT NULL,
+                    sub3_status TEXT NOT NULL,
 
-                                s.isUpgradeApproved()
+                    upgrade_approved INTEGER NOT NULL DEFAULT 0
                 );
-            }
+                """;
 
-            System.out.println("✅ Saved: " + FILE.getAbsolutePath());
+        String createBackupTable = """
+                CREATE TABLE IF NOT EXISTS students_backup (
+                    student_id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL,
 
-        } catch (Exception e) {
-            System.out.println("❌ Save error: " + e.getMessage());
+                    module1_name TEXT NOT NULL,
+                    sub1 REAL NOT NULL,
+                    sub1_status TEXT NOT NULL,
+
+                    module2_name TEXT NOT NULL,
+                    sub2 REAL NOT NULL,
+                    sub2_status TEXT NOT NULL,
+
+                    module3_name TEXT NOT NULL,
+                    sub3 REAL NOT NULL,
+                    sub3_status TEXT NOT NULL,
+
+                    upgrade_approved INTEGER NOT NULL DEFAULT 0
+                );
+                """;
+
+        try (Connection conn = DBConnection.getConnection();
+             Statement stmt = conn.createStatement()) {
+
+            stmt.execute(createStudentsTable);
+            stmt.execute(createBackupTable);
+
+            initialized = true; // important: set this BEFORE migration
+            migrateCsvToDatabaseIfNeeded(conn);
+
+            System.out.println("✅ Database initialized.");
+
+        } catch (SQLException e) {
+            System.out.println("❌ Database init error: " + e.getMessage());
         }
     }
 
-    public static List<Student> loadStudents() {
-        List<Student> students = new ArrayList<>();
+    private static void migrateCsvToDatabaseIfNeeded(Connection conn) {
+        if (!CSV_FILE.exists()) return;
 
-        if (!FILE.exists()) return students;
+        String countSql = "SELECT COUNT(*) FROM students";
 
-        try (BufferedReader reader = new BufferedReader(new FileReader(FILE))) {
+        try (Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(countSql)) {
 
+            int count = rs.next() ? rs.getInt(1) : 0;
+            if (count > 0) return; // already migrated
+
+        } catch (SQLException e) {
+            System.out.println("❌ Count check error: " + e.getMessage());
+            return;
+        }
+
+        List<Student> csvStudents = new ArrayList<>();
+
+        try (BufferedReader reader = new BufferedReader(new FileReader(CSV_FILE))) {
             String line;
-            while ((line = reader.readLine()) != null) {
 
+            while ((line = reader.readLine()) != null) {
                 String[] p = line.split(",");
                 if (p.length < 11) continue;
 
@@ -71,7 +116,124 @@ public class FileHandler {
                     approved = Boolean.parseBoolean(p[11].trim());
                 }
 
-                Student student = new Student(id, name,
+                Student student = new Student(
+                        id, name,
+                        m1, s1, st1,
+                        m2, s2, st2,
+                        m3, s3, st3
+                );
+
+                student.setUpgradeApproved(approved);
+                student.applyApprovedUpgrade();
+
+                csvStudents.add(student);
+            }
+
+            insertStudentsDirect(conn, csvStudents);
+            System.out.println("✅ CSV data migrated to SQLite.");
+
+        } catch (Exception e) {
+            System.out.println("❌ CSV migration error: " + e.getMessage());
+        }
+    }
+
+    private static void insertStudentsDirect(Connection conn, List<Student> students) throws SQLException {
+        String deleteSql = "DELETE FROM students";
+        String insertSql = """
+                INSERT INTO students (
+                    student_id, name,
+                    module1_name, sub1, sub1_status,
+                    module2_name, sub2, sub2_status,
+                    module3_name, sub3, sub3_status,
+                    upgrade_approved
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """;
+
+        conn.setAutoCommit(false);
+
+        try (Statement deleteStmt = conn.createStatement()) {
+            deleteStmt.executeUpdate(deleteSql);
+        }
+
+        try (PreparedStatement ps = conn.prepareStatement(insertSql)) {
+            for (Student s : students) {
+                ps.setString(1, s.getStudentId());
+                ps.setString(2, s.getName());
+
+                ps.setString(3, s.getModule1Name());
+                ps.setDouble(4, s.getSub1());
+                ps.setString(5, s.getSub1Status().name());
+
+                ps.setString(6, s.getModule2Name());
+                ps.setDouble(7, s.getSub2());
+                ps.setString(8, s.getSub2Status().name());
+
+                ps.setString(9, s.getModule3Name());
+                ps.setDouble(10, s.getSub3());
+                ps.setString(11, s.getSub3Status().name());
+
+                ps.setInt(12, s.isUpgradeApproved() ? 1 : 0);
+
+                ps.addBatch();
+            }
+
+            ps.executeBatch();
+        }
+
+        conn.commit();
+    }
+
+    public static void saveStudents(List<Student> students) {
+        initializeDatabase();
+
+        try (Connection conn = DBConnection.getConnection()) {
+            insertStudentsDirect(conn, students);
+            System.out.println("✅ Students saved to database.");
+        } catch (SQLException e) {
+            System.out.println("❌ Save error: " + e.getMessage());
+        }
+    }
+
+    public static List<Student> loadStudents() {
+        initializeDatabase();
+
+        List<Student> students = new ArrayList<>();
+
+        String sql = """
+                SELECT
+                    student_id, name,
+                    module1_name, sub1, sub1_status,
+                    module2_name, sub2, sub2_status,
+                    module3_name, sub3, sub3_status,
+                    upgrade_approved
+                FROM students
+                ORDER BY student_id
+                """;
+
+        try (Connection conn = DBConnection.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+
+            while (rs.next()) {
+                String id = rs.getString("student_id");
+                String name = rs.getString("name");
+
+                String m1 = rs.getString("module1_name");
+                double s1 = rs.getDouble("sub1");
+                ExamStatus st1 = parseStatus(rs.getString("sub1_status"));
+
+                String m2 = rs.getString("module2_name");
+                double s2 = rs.getDouble("sub2");
+                ExamStatus st2 = parseStatus(rs.getString("sub2_status"));
+
+                String m3 = rs.getString("module3_name");
+                double s3 = rs.getDouble("sub3");
+                ExamStatus st3 = parseStatus(rs.getString("sub3_status"));
+
+                boolean approved = rs.getInt("upgrade_approved") == 1;
+
+                Student student = new Student(
+                        id, name,
                         m1, s1, st1,
                         m2, s2, st2,
                         m3, s3, st3
@@ -83,7 +245,7 @@ public class FileHandler {
                 students.add(student);
             }
 
-        } catch (Exception e) {
+        } catch (SQLException e) {
             System.out.println("❌ Load error: " + e.getMessage());
         }
 
@@ -91,37 +253,82 @@ public class FileHandler {
     }
 
     public static void backupStudents() {
-        if (!FILE.exists()) return;
+        initializeDatabase();
 
-        try (BufferedReader reader = new BufferedReader(new FileReader(FILE));
-             PrintWriter writer = new PrintWriter(new FileWriter(BACKUP_FILE))) {
+        String clearBackup = "DELETE FROM students_backup";
+        String copyToBackup = """
+                INSERT INTO students_backup (
+                    student_id, name,
+                    module1_name, sub1, sub1_status,
+                    module2_name, sub2, sub2_status,
+                    module3_name, sub3, sub3_status,
+                    upgrade_approved
+                )
+                SELECT
+                    student_id, name,
+                    module1_name, sub1, sub1_status,
+                    module2_name, sub2, sub2_status,
+                    module3_name, sub3, sub3_status,
+                    upgrade_approved
+                FROM students
+                """;
 
-            String line;
-            while ((line = reader.readLine()) != null) {
-                writer.println(line);
-            }
+        try (Connection conn = DBConnection.getConnection();
+             Statement stmt = conn.createStatement()) {
 
-            System.out.println("💾 Backup created.");
+            conn.setAutoCommit(false);
+            stmt.executeUpdate(clearBackup);
+            stmt.executeUpdate(copyToBackup);
+            conn.commit();
 
-        } catch (Exception e) {
+            System.out.println("💾 Backup created in database.");
+
+        } catch (SQLException e) {
             System.out.println("❌ Backup error: " + e.getMessage());
         }
     }
 
     public static boolean restoreBackup() {
-        if (!BACKUP_FILE.exists()) return false;
+        initializeDatabase();
 
-        try (BufferedReader reader = new BufferedReader(new FileReader(BACKUP_FILE));
-             PrintWriter writer = new PrintWriter(new FileWriter(FILE))) {
+        String backupCountSql = "SELECT COUNT(*) FROM students_backup";
+        String clearStudents = "DELETE FROM students";
+        String restoreSql = """
+                INSERT INTO students (
+                    student_id, name,
+                    module1_name, sub1, sub1_status,
+                    module2_name, sub2, sub2_status,
+                    module3_name, sub3, sub3_status,
+                    upgrade_approved
+                )
+                SELECT
+                    student_id, name,
+                    module1_name, sub1, sub1_status,
+                    module2_name, sub2, sub2_status,
+                    module3_name, sub3, sub3_status,
+                    upgrade_approved
+                FROM students_backup
+                """;
 
-            String line;
-            while ((line = reader.readLine()) != null) {
-                writer.println(line);
+        try (Connection conn = DBConnection.getConnection()) {
+            conn.setAutoCommit(false);
+
+            try (Statement stmt = conn.createStatement();
+                 ResultSet rs = stmt.executeQuery(backupCountSql)) {
+
+                int count = rs.next() ? rs.getInt(1) : 0;
+                if (count == 0) return false;
             }
 
+            try (Statement stmt = conn.createStatement()) {
+                stmt.executeUpdate(clearStudents);
+                stmt.executeUpdate(restoreSql);
+            }
+
+            conn.commit();
             return true;
 
-        } catch (Exception e) {
+        } catch (SQLException e) {
             System.out.println("❌ Restore error: " + e.getMessage());
             return false;
         }
