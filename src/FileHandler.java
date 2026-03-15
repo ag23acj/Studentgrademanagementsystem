@@ -7,6 +7,11 @@ import java.util.List;
 
 public class FileHandler {
 
+
+    public static void initialize() {
+        initializeDatabase();
+    }
+
     private static final File CSV_FILE = new File(System.getProperty("user.dir"), "students.csv");
     private static boolean initialized = false;
 
@@ -55,19 +60,55 @@ public class FileHandler {
                 );
                 """;
 
+                     String createUsersTable = """
+                     CREATE TABLE IF NOT EXISTS users (
+                     username TEXT PRIMARY KEY,
+                     password TEXT NOT NULL,
+                     role TEXT NOT NULL
+                );
+                """;
+
         try (Connection conn = DBConnection.getConnection();
              Statement stmt = conn.createStatement()) {
 
             stmt.execute(createStudentsTable);
             stmt.execute(createBackupTable);
+            stmt.execute(createUsersTable);
 
-            initialized = true; // important: set this BEFORE migration
+            ensureDefaultUsers(conn);
+
+            initialized = true;
             migrateCsvToDatabaseIfNeeded(conn);
 
             System.out.println("✅ Database initialized.");
 
         } catch (SQLException e) {
             System.out.println("❌ Database init error: " + e.getMessage());
+        }
+    }
+
+    private static void ensureDefaultUsers(Connection conn) {
+        String checkSql = "SELECT COUNT(*) FROM users";
+
+        try (Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(checkSql)) {
+
+            int count = rs.next() ? rs.getInt(1) : 0;
+
+            if (count == 0) {
+                String insertSql = """
+                    INSERT INTO users(username, password, role)
+                    VALUES
+                    ('admin', 'admin123', 'ADMIN'),
+                    ('tutor', 'tutor123', 'TUTOR')
+                    """;
+
+                stmt.executeUpdate(insertSql);
+                System.out.println("✅ Default users created.");
+            }
+
+        } catch (SQLException e) {
+            System.out.println("❌ User init error: " + e.getMessage());
         }
     }
 

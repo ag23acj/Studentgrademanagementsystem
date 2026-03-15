@@ -2,8 +2,11 @@ import javax.swing.*;
 import java.awt.*;
 
 public class LoginFrame extends JFrame {
+    private final AuthService authService = new AuthService();
 
     public LoginFrame() {
+
+
 
         setTitle("Login - Student Grade Management System");
         setSize(420, 260);
@@ -37,13 +40,9 @@ public class LoginFrame extends JFrame {
             String username = userField.getText().trim();
             String password = new String(passField.getPassword());
 
-            UserRole role;
+            UserRole role = authService.login(username, password);
 
-            if (username.equals("admin") && password.equals("admin123")) {
-                role = UserRole.ADMIN;
-            } else if (username.equals("user") && password.equals("user123")) {
-                role = UserRole.TUTOR;
-            } else {
+            if (role == null) {
                 JOptionPane.showMessageDialog(this, "❌ Invalid login.");
                 return;
             }

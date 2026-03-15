@@ -5,7 +5,10 @@ import java.util.List;
 
 public class DashboardFrame extends JFrame {
 
+
+
     private final UserRole role;
+    private final StudentService studentService;
 
     private List<Student> students;
 
@@ -18,7 +21,8 @@ public class DashboardFrame extends JFrame {
 
     public DashboardFrame(UserRole role) {
         this.role = role;
-        this.students = FileHandler.loadStudents();
+        this.studentService = new StudentService();
+        this.students = studentService.getAllStudents();
 
         setTitle("Student Grade Management System");
         setSize(1200, 650);
@@ -131,7 +135,7 @@ public class DashboardFrame extends JFrame {
         addBtn.addActionListener(e -> showAddStudentDialog());
 
         viewBtn.addActionListener(e -> {
-            students = FileHandler.loadStudents();
+            students = studentService.getAllStudents();
             refreshTable();
             JOptionPane.showMessageDialog(this, "Loaded " + students.size() + " students.");
         });
@@ -152,7 +156,7 @@ public class DashboardFrame extends JFrame {
 
 
         saveExitBtn.addActionListener(e -> {
-            FileHandler.saveStudents(students);
+            studentService.saveAllStudents(students);
             JOptionPane.showMessageDialog(this, "Saved! Exiting...");
             System.exit(0);
         });
@@ -163,7 +167,7 @@ public class DashboardFrame extends JFrame {
     }
 
     private void showAtRiskStudents() {
-        students = FileHandler.loadStudents();
+        students = studentService.getAllStudents();
         tableModel.setRowCount(0);
 
         int count = 0;
@@ -210,7 +214,7 @@ public class DashboardFrame extends JFrame {
 
 
     private void refreshTable() {
-        students = FileHandler.loadStudents(); // always load latest
+        students = studentService.getAllStudents(); // always load latest
         tableModel.setRowCount(0);
 
         for (Student s : students) {
@@ -383,24 +387,21 @@ public class DashboardFrame extends JFrame {
             ExamStatus st3 = (ExamStatus) st3Box.getSelectedItem();
 
             // always load latest before add
-            students = FileHandler.loadStudents();
-
-            for (Student s : students) {
-                if (s.getStudentId().equals(id)) {
-                    JOptionPane.showMessageDialog(this, "This Student ID already exists!");
-                    return;
-                }
-            }
-
-            students.add(new Student(id, name,
+            Student newStudent = new Student(
+                    id, name,
                     m1, s1, st1,
                     m2, s2, st2,
                     m3, s3, st3
-            ));
+            );
 
-            FileHandler.saveStudents(students);
+            boolean added = studentService.addStudent(newStudent);
+
+            if (!added) {
+                JOptionPane.showMessageDialog(this, "This Student ID already exists!");
+                return;
+            }
+
             refreshTable();
-
             JOptionPane.showMessageDialog(this, "✅ Student added successfully!");
 
         } catch (IllegalArgumentException ex) {
@@ -450,15 +451,7 @@ public class DashboardFrame extends JFrame {
             return;
         }
 
-        students = FileHandler.loadStudents();
-        Student found = null;
-
-        for (Student s : students) {
-            if (s.getStudentId().equals(id)) {
-                found = s;
-                break;
-            }
-        }
+        Student found = studentService.findStudentById(id);
 
         if (found == null) {
             JOptionPane.showMessageDialog(this, "❌ Student not found.");
@@ -475,10 +468,14 @@ public class DashboardFrame extends JFrame {
         );
 
         if (confirm == JOptionPane.YES_OPTION) {
-            students.remove(found);
-            FileHandler.saveStudents(students);
-            refreshTable();
-            JOptionPane.showMessageDialog(this, "✅ Deleted successfully.");
+            boolean deleted = studentService.deleteStudent(id);
+
+            if (deleted) {
+                refreshTable();
+                JOptionPane.showMessageDialog(this, "✅ Deleted successfully.");
+            } else {
+                JOptionPane.showMessageDialog(this, "❌ Delete failed.");
+            }
         }
     }
 
@@ -499,16 +496,7 @@ public class DashboardFrame extends JFrame {
 
         students = FileHandler.loadStudents();
 
-        Student found = null;
-        int idx = -1;
-
-        for (int i = 0; i < students.size(); i++) {
-            if (students.get(i).getStudentId().equals(id)) {
-                found = students.get(i);
-                idx = i;
-                break;
-            }
-        }
+        Student found = studentService.findStudentById(id);
 
         if (found == null) {
             JOptionPane.showMessageDialog(this, "❌ Student not found.");
@@ -587,11 +575,14 @@ public class DashboardFrame extends JFrame {
             updated.setUpgradeApproved(found.isUpgradeApproved());
             updated.applyApprovedUpgrade();
 
-            students.set(idx, updated);
-            FileHandler.saveStudents(students);
-            refreshTable();
+            boolean updatedOk = studentService.updateStudent(id, updated);
 
-            JOptionPane.showMessageDialog(this, "✅ Updated. New outcome: " + updated.getGrade());
+            if (updatedOk) {
+                refreshTable();
+                JOptionPane.showMessageDialog(this, "✅ Updated. New outcome: " + updated.getGrade());
+            } else {
+                JOptionPane.showMessageDialog(this, "❌ Update failed.");
+            }
 
         } catch (IllegalArgumentException ex) {
             JOptionPane.showMessageDialog(this, ex.getMessage());
@@ -602,8 +593,7 @@ public class DashboardFrame extends JFrame {
     // CLEAR + RESTORE
     // ======================
     private void showClearAllDialog() {
-        students = FileHandler.loadStudents();
-
+        students = studentService.getAllStudents();
         if (students.isEmpty()) {
             JOptionPane.showMessageDialog(this, "No students to clear.");
             return;
@@ -617,9 +607,9 @@ public class DashboardFrame extends JFrame {
         );
 
         if (confirm == JOptionPane.YES_OPTION) {
-            FileHandler.backupStudents();
+            studentService.backupStudents();
             students.clear();
-            FileHandler.saveStudents(students);
+            studentService.saveAllStudents(students);
             refreshTable();
             JOptionPane.showMessageDialog(this, "✅ Cleared all students (backup created).");
         }
@@ -635,7 +625,7 @@ public class DashboardFrame extends JFrame {
 
         if (confirm != JOptionPane.YES_OPTION) return;
 
-        boolean ok = FileHandler.restoreBackup();
+        boolean ok = studentService.restoreBackup();
         if (!ok) {
             JOptionPane.showMessageDialog(this, "❌ No backup found.");
             return;
@@ -663,15 +653,7 @@ public class DashboardFrame extends JFrame {
         int modelRow = table.convertRowIndexToModel(viewRow);
         String id = tableModel.getValueAt(modelRow, 0).toString();
 
-        students = FileHandler.loadStudents();
-
-        Student found = null;
-        for (Student s : students) {
-            if (s.getStudentId().equals(id)) {
-                found = s;
-                break;
-            }
-        }
+        Student found = studentService.findStudentById(id);
 
         if (found == null) {
             JOptionPane.showMessageDialog(this, "Student not found.");
@@ -698,11 +680,14 @@ public class DashboardFrame extends JFrame {
         );
 
         if (confirm == JOptionPane.YES_OPTION) {
-            found.setUpgradeApproved(true);
-            found.applyApprovedUpgrade();
-            FileHandler.saveStudents(students);
-            refreshTable();
-            JOptionPane.showMessageDialog(this, "✅ Upgrade approved.");
+            boolean approved = studentService.approveUpgrade(id);
+
+            if (approved) {
+                refreshTable();
+                JOptionPane.showMessageDialog(this, "✅ Upgrade approved.");
+            } else {
+                JOptionPane.showMessageDialog(this, "❌ Upgrade approval failed.");
+            }
         }
     }
 
